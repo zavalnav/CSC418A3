@@ -54,7 +54,7 @@ bool UnitSquare::intersect( Ray3D& ray, const Matrix4x4& worldToModel,
 
 	}
 
-	//Find inteesection with object. Our ray = dirInObject
+	//Find intesection with object. Our ray = dirInObject
 
 	return !ray.intersection.none;
 }
@@ -70,7 +70,38 @@ bool UnitSphere::intersect( Ray3D& ray, const Matrix4x4& worldToModel,
 	//
 	// HINT: Remember to first transform the ray into object space  
 	// to simplify the intersection test.
-	
-	return false;
+
+	// The intersection point & normal are in object space!
+
+	Point3D x1 = worldToModel * ray.origin; // o
+	Point3D x2 = worldToModel * (ray.origin + ray.dir);
+	Point3D x0 = Point3D(0, 0, 0); // c
+
+	Vector3D v0 = x0 - x1, v1 = x0 - x2, v2 = x2 - x1;
+	Vector3D v = v0.cross(v1);
+	float dist = v.length() / v2.length();
+
+	if (!(dist > 1))
+	{
+		Vector3D I = x2 - x1;
+		I.normalize();
+		Vector3D J = x1 - x0;
+		float d0 = -I.dot(J) - sqrt(I.dot(J) * I.dot(J) - J.length() * J.length() + 1);
+		float d1 = -I.dot(J) + sqrt(I.dot(J) * I.dot(J) - J.length() * J.length() + 1);
+		if (d0 > 0)
+		{
+			ray.intersection.none = false;
+			ray.intersection.point = x1 + d0 * I;
+			ray.intersection.normal = ray.intersection.point - x0;
+		}
+		else if (d1 > 0)
+		{
+			ray.intersection.none = false;
+			ray.intersection.point = x1 + d1 * I;
+			ray.intersection.normal = ray.intersection.point - x0;
+		}
+	}
+
+	return !ray.intersection.none;
 }
 

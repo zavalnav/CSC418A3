@@ -164,7 +164,7 @@ void Raytracer::traverseScene( SceneDagNode* node, Ray3D& ray ) {
 	if (node->obj) {
 		// Perform intersection.
 		if (node->obj->intersect(ray, _worldToModel, _modelToWorld)) {
-			printf("intersected an object\n");
+			//printf("intersected an object\n");
 			ray.intersection.mat = node->mat;
 		}
 	}
