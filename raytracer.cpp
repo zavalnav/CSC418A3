@@ -165,7 +165,7 @@ void Raytracer::traverseScene( SceneDagNode* node, Ray3D& ray ) {
 		// Perform intersection.
 		if (node->obj->intersect(ray, _worldToModel, _modelToWorld)) {
 			//printf("intersected an object\n");
-			ray.intersection.mat = node->mat;
+ 			ray.intersection.mat = node->mat;
 		}
 	}
 	// Traverse the children.
@@ -217,6 +217,7 @@ void Raytracer::flushPixelBuffer( char *file_name ) {
 
 Colour Raytracer::shadeRay( Ray3D& ray ) {
 	Colour col(0.0, 0.0, 0.0); 
+	ray.intersection.t_value = 1e99;
 	traverseScene(_root, ray); 
 	
 	// Don't bother shading if the ray didn't hit 
@@ -242,6 +243,8 @@ void Raytracer::render( int width, int height, Point3D eye, Vector3D view,
 	initPixelBuffer();
 	viewToWorld = initInvViewMatrix(eye, view, up);
 
+	//freopen("scene.txt", "w", stdout);
+
 	// Construct a ray for each pixel.
 	for (int i = 0; i < _scrHeight; i++) {
 		for (int j = 0; j < _scrWidth; j++) {
@@ -258,17 +261,23 @@ void Raytracer::render( int width, int height, Point3D eye, Vector3D view,
 
 			Vector3D dir = imagePlane - origin;
 			Vector3D dirWorld = viewToWorld * dir;
-			 
+			
 			Ray3D ray;
 			ray.origin = viewToWorld * origin;
 			ray.dir = dirWorld;
 
 			Colour col = shadeRay(ray); 
-
+/*
+			if (ray.intersection.none)
+				printf("_");
+			else
+				printf("o");
+*/
 			_rbuffer[i*width+j] = int(col[0]*255);
 			_gbuffer[i*width+j] = int(col[1]*255);
 			_bbuffer[i*width+j] = int(col[2]*255);
 		}
+//		printf("\n");
 	}
 
 	flushPixelBuffer(fileName);
