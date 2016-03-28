@@ -17,6 +17,8 @@
 #include <iostream>
 #include <cstdlib>
 
+#define ANTIALIAS 1
+
 Raytracer::Raytracer() : _lightSource(NULL) {
 	_root = new SceneDagNode();
 }
@@ -252,30 +254,55 @@ void Raytracer::render( int width, int height, Point3D eye, Vector3D view,
 			// image plane is at z = -1.
 			Point3D origin(0, 0, 0);
 			Point3D imagePlane;
-			imagePlane[0] = (-double(width)/2 + 0.5 + j)/factor;
-			imagePlane[1] = (-double(height)/2 + 0.5 + i)/factor;
-			imagePlane[2] = -1;
+			if (ANTIALIAS){
+				for (float parti = i; parti < i + 1.0f; parti += 0.5f){
+					for (float partj = j; partj < j + 1.0f; partj += 0.5f){
+						imagePlane[0] = (-double(width)/2 + 0.5 + partj)/factor;
+						imagePlane[1] = (-double(height)/2 + 0.5 + parti)/factor;
+						imagePlane[2] = -1;
 
-			// TODO: Convert ray to world space and call 
-			// shadeRay(ray) to generate pixel colour.
 
-			Vector3D dir = imagePlane - origin;
-			Vector3D dirWorld = viewToWorld * dir;
-			
-			Ray3D ray;
-			ray.origin = viewToWorld * origin;
-			ray.dir = dirWorld;
+						Vector3D dir = imagePlane - origin;
+						Vector3D dirWorld = viewToWorld * dir;
+						
+						Ray3D ray;
+						ray.origin = viewToWorld * origin;
+						ray.dir = dirWorld;
+						Colour col = shadeRay(ray);
 
-			Colour col = shadeRay(ray); 
-/*
-			if (ray.intersection.none)
-				printf("_");
-			else
-				printf("o");
-*/
-			_rbuffer[i*width+j] = int(col[0]*255);
-			_gbuffer[i*width+j] = int(col[1]*255);
-			_bbuffer[i*width+j] = int(col[2]*255);
+						_rbuffer[i*width+j] += int(col[0]*255*0.25f);
+						_gbuffer[i*width+j] += int(col[1]*255*0.25f);
+						_bbuffer[i*width+j] += int(col[2]*255*0.25f);
+					}
+				}
+			}
+			else 
+			{
+				imagePlane[0] = (-double(width)/2 + 0.5 + j)/factor;
+				imagePlane[1] = (-double(height)/2 + 0.5 + i)/factor;
+				imagePlane[2] = -1;
+
+				// TODO: Convert ray to world space and call 
+				// shadeRay(ray) to generate pixel colour.
+
+				Vector3D dir = imagePlane - origin;
+				Vector3D dirWorld = viewToWorld * dir;
+				
+				Ray3D ray;
+				ray.origin = viewToWorld * origin;
+				ray.dir = dirWorld;
+
+				Colour col = shadeRay(ray); 
+	/*
+				if (ray.intersection.none)
+					printf("_");
+				else
+					printf("o");
+	*/
+				_rbuffer[i*width+j] = int(col[0]*255);
+				_gbuffer[i*width+j] = int(col[1]*255);
+				_bbuffer[i*width+j] = int(col[2]*255);
+			}
 		}
 //		printf("\n");
 	}
