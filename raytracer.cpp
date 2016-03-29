@@ -257,8 +257,8 @@ void Raytracer::render( int width, int height, Point3D eye, Vector3D view,
 			if (ANTIALIAS){
 				for (float parti = i; parti < i + 1.0f; parti += 0.5f){
 					for (float partj = j; partj < j + 1.0f; partj += 0.5f){
-						imagePlane[0] = (-double(width)/2 + 0.5 + partj)/factor;
-						imagePlane[1] = (-double(height)/2 + 0.5 + parti)/factor;
+						imagePlane[0] = (-double(width)/2 + 0.25 + partj)/factor;
+						imagePlane[1] = (-double(height)/2 + 0.25 + parti)/factor;
 						imagePlane[2] = -1;
 
 
