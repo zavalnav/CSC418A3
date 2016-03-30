@@ -18,9 +18,12 @@
 #include <cstdlib>
 
 #define ANTIALIAS 1
+#define REFLECTION 1
+#define REFRACTION 1
 
 Raytracer::Raytracer() : _lightSource(NULL) {
 	_root = new SceneDagNode();
+	_maxDepth = 2;
 }
 
 Raytracer::~Raytracer() {
@@ -191,7 +194,13 @@ void Raytracer::computeShading( Ray3D& ray ) {
 
 		// Implement shadows here if needed.
 
-		curLight->light->shade(ray);
+		Vector3D dir_shadow = curLight->light->get_position() - ray.intersection.point;
+		Ray3D ray_shadow(ray.intersection.point, dir_shadow);
+		traverseScene(_root, ray_shadow);
+		if (!ray_shadow.intersection.none)
+			curLight->light->ambient(ray);
+		else
+			curLight->light->shade(ray);
 		curLight = curLight->next;
 	}
 }
@@ -217,21 +226,34 @@ void Raytracer::flushPixelBuffer( char *file_name ) {
 	delete _bbuffer;
 }
 
-Colour Raytracer::shadeRay( Ray3D& ray ) {
+Colour Raytracer::shadeRay( Ray3D& ray, int depth ) {
 	Colour col(0.0, 0.0, 0.0); 
-	ray.intersection.t_value = 1e99;
+	if (depth == _maxDepth) return col;
 	traverseScene(_root, ray); 
 	
 	// Don't bother shading if the ray didn't hit 
 	// anything.
 	if (!ray.intersection.none) {
 		computeShading(ray); 
-		col = ray.col;  
+		float refl = ray.intersection.mat->refl_coef;
+		float refr = ray.intersection.mat->refr_coef;
+		col = (1 - refl - refr) * ray.col;
+
+		if (REFLECTION && refl > 0)
+		{
+			// handle reflection
+			float nlength = -2 * ray.dir.dot(ray.intersection.normal);
+			Ray3D ray_refl(ray.intersection.point, nlength * ray.intersection.normal + ray.dir);
+
+			Colour refl_col = shadeRay( ray_refl, depth + 1 );
+			col = col + refl * refl_col;
+		}
 	}
 
+	
 	// You'll want to call shadeRay recursively (with a different ray, 
 	// of course) here to implement reflection/refraction effects.  
-
+	
 	return col; 
 }	
 
@@ -245,7 +267,7 @@ void Raytracer::render( int width, int height, Point3D eye, Vector3D view,
 	initPixelBuffer();
 	viewToWorld = initInvViewMatrix(eye, view, up);
 
-	//freopen("scene.txt", "w", stdout);
+	freopen("scene.txt", "w", stdout);
 
 	// Construct a ray for each pixel.
 	for (int i = 0; i < _scrHeight; i++) {
@@ -254,8 +276,6 @@ void Raytracer::render( int width, int height, Point3D eye, Vector3D view,
 			// image plane is at z = -1.
 			Point3D origin(0, 0, 0);
 			Point3D imagePlane;
-			Colour col;
-			int supersample = 4;
 			if (ANTIALIAS){
 				for (float parti = i; parti < i + 1.0f; parti += 0.5f){
 					for (float partj = j; partj < j + 1.0f; partj += 0.5f){
@@ -266,11 +286,11 @@ void Raytracer::render( int width, int height, Point3D eye, Vector3D view,
 
 						Vector3D dir = imagePlane - origin;
 						Vector3D dirWorld = viewToWorld * dir;
-						
+							
 						Ray3D ray;
 						ray.origin = viewToWorld * origin;
 						ray.dir = dirWorld;
-						Colour col = shadeRay(ray);
+						Colour col = shadeRay(ray, 0);
 
 						_rbuffer[i*width+j] += int(col[0]*255*0.25f);
 						_gbuffer[i*width+j] += int(col[1]*255*0.25f);
@@ -294,11 +314,16 @@ void Raytracer::render( int width, int height, Point3D eye, Vector3D view,
 				ray.origin = viewToWorld * origin;
 				ray.dir = dirWorld;
 
-				col = shadeRay(ray); 
-
-				_rbuffer[i*width+j] += int(col[0]*255);
-				_gbuffer[i*width+j] += int(col[1]*255);
-				_bbuffer[i*width+j] += int(col[2]*255);
+				Colour col = shadeRay(ray, 0); 
+	/*
+				if (ray.intersection.none)
+					printf("_");
+				else
+					printf("o");
+	*/
+				_rbuffer[i*width+j] = int(col[0]*255);
+				_gbuffer[i*width+j] = int(col[1]*255);
+				_bbuffer[i*width+j] = int(col[2]*255);
 			}
 		}
 //		printf("\n");
@@ -336,7 +361,6 @@ int main(int argc, char* argv[])
 	Material jade( Colour(0, 0, 0), Colour(0.54, 0.89, 0.63), 
 			Colour(0.316228, 0.316228, 0.316228), 
 			12.8 );
-	 
 	Material glass(Colour(0.0, 0.0, 0.0), Colour(0.588235, 0.670588, 0.729412),
 		Colour(0.9, 0.9, 0.9), 1.5);
 
@@ -369,12 +393,6 @@ int main(int argc, char* argv[])
 	//Sphere3
 	//raytracer.rotate(sphere2, 'x', 30); 
 	//raytracer.rotate(sphere2, 'y', 45); 
-	raytracer.translate(sphere2, Vector3D(-3, 1, -5));	
-
-
-	//Sphere4
-	// raytracer.rotate(sphere, 'x', 30); 
-	// raytracer.rotate(sphere1, 'y', 45); 
 	raytracer.translate(sphere2, Vector3D(-3, 1, -5));	
 
 	//Plane

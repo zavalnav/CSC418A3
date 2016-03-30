@@ -12,6 +12,8 @@
 #include <iostream>
 #include "scene_object.h"
 
+const double eps = 1e-4;
+
 bool UnitSquare::intersect( Ray3D& ray, const Matrix4x4& worldToModel,
 		const Matrix4x4& modelToWorld ) {
 
@@ -41,6 +43,7 @@ bool UnitSquare::intersect( Ray3D& ray, const Matrix4x4& worldToModel,
 	Vector3D normal = Vector3D(0, 0, 1);
 	Vector3D P1 = Vector3D(0.5, 0.5, 0);
 	float dist = -originInObject[2] / dirInObject[2];
+	if (dist < eps) return false;
 	Point3D intersect_point = originInObject + dist * dirInObject;
 /*
 	Point3D intersect_point = Point3D(
@@ -53,12 +56,13 @@ bool UnitSquare::intersect( Ray3D& ray, const Matrix4x4& worldToModel,
 	{
 		Point3D new_intersection = modelToWorld * intersect_point;
 		float new_t_value = (new_intersection[0] - ray.origin[0]) / ray.dir[0];
-		if (new_t_value < ray.intersection.t_value)
+		if (ray.intersection.none || new_t_value < ray.intersection.t_value)
 		{
 			ray.intersection.none = false;
 			ray.intersection.t_value = new_t_value;
 			ray.intersection.point = new_intersection;
 			ray.intersection.normal = transNorm(worldToModel, normal);
+			ray.intersection.normal.normalize();
 			return true;
 		}
 		else
@@ -107,24 +111,18 @@ bool UnitSphere::intersect( Ray3D& ray, const Matrix4x4& worldToModel,
 
 		Point3D i_model; // intersection point in object space
 		Point3D new_intersection; // intersection point in world space
-		if (d0 > 0)
-		{
-			i_model = x1 + d0 * I;
-			new_intersection = modelToWorld * i_model;
-		}
-		else if (d1 > 0)
-		{
-			i_model = x1 + d1 * I;
-			new_intersection = modelToWorld * i_model;
-		}
+		if (d0 < eps) return false;
+		i_model = x1 + d0 * I;
+		new_intersection = modelToWorld * i_model;
 
 		float new_t_value = (new_intersection[0] - ray.origin[0]) / ray.dir[0];
-		if (new_t_value < ray.intersection.t_value)
+		if (ray.intersection.none || new_t_value < ray.intersection.t_value)
 		{
 			ray.intersection.none = false;
 			ray.intersection.point = new_intersection;
 			ray.intersection.t_value = new_t_value;
 			ray.intersection.normal = transNorm(worldToModel, i_model - x0);
+			ray.intersection.normal.normalize();
 			return true;
 		}
 		else

@@ -12,6 +12,12 @@
 #include <cstdio>
 #include "light_source.h"
 
+void PointLight::ambient( Ray3D& ray ) {
+	// returns the ambient part of phong shading
+
+	ray.col = ray.intersection.mat->ambient * _col_ambient;
+}
+
 void PointLight::shade( Ray3D& ray ) {
 	// TODO: implement this function to fill in values for ray.col 
 	// using phong shading.  Make sure your vectors are normalized, and
@@ -26,7 +32,6 @@ void PointLight::shade( Ray3D& ray ) {
 	Vector3D d = -1.0 * ray.dir; // ray direction
 
 	s.normalize();
-	n.normalize();
 	d.normalize();
 
 	// ambient
