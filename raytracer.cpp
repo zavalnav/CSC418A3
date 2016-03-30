@@ -357,26 +357,46 @@ int main(int argc, char* argv[])
 	// Defines a material for shading.
 	Material gold( Colour(0.3, 0.3, 0.3), Colour(0.75164, 0.60648, 0.22648), 
 			Colour(0.628281, 0.555802, 0.366065), 
-			51.2, 0.2, 0.0 );
+			51.2 );
 	Material jade( Colour(0, 0, 0), Colour(0.54, 0.89, 0.63), 
 			Colour(0.316228, 0.316228, 0.316228), 
-			12.8, 0.8, 0.0 );
+			12.8 );
+	Material glass(Colour(0.0, 0.0, 0.0), Colour(0.588235, 0.670588, 0.729412),
+		Colour(0.9, 0.9, 0.9), 1.5);
 
 	// Defines a point light source.
-	raytracer.addLightSource( new PointLight(Point3D(0, 0, 5), 
-				Colour(0.9, 0.9, 0.9) ) );
-	// Add a unit square nto the scene with material mat.
+	raytracer.addLightSource( new PointLight(Point3D(0, 0, 5), Colour(0.9, 0.9, 0.9)));
+	// Add a unit sphere nto the scene with material mat.
 	SceneDagNode* sphere = raytracer.addObject( new UnitSphere(), &gold );
+	SceneDagNode* sphere1 = raytracer.addObject( new UnitSphere(), &gold );
+	SceneDagNode* sphere2 = raytracer.addObject( new UnitSphere(), &glass );
+	//SceneDagNode* sphere3 = raytracer.addObject( new UnitSphere(), &gold );
+	//SceneDagNode* sphere4 = raytracer.addObject( new UnitSphere(), &gold );
+
 	SceneDagNode* plane = raytracer.addObject( new UnitSquare(), &jade );
 	
-	// Apply some transformations to the unit square.
+	// Apply some transformations to the unit sphere.
+	//Sphere1
 	double factor1[3] = { 1.0, 2.0, 1.0 };
-	double factor2[3] = { 6.0, 6.0, 6.0 };
 	raytracer.translate(sphere, Vector3D(0, 0, -5));	
 	raytracer.rotate(sphere, 'x', -45); 
 	raytracer.rotate(sphere, 'z', 45); 
 	raytracer.scale(sphere, Point3D(0, 0, 0), factor1);
 
+	//Sphere2
+	double factor3[3] = { 0.5, 0.5, 0.5 };
+	raytracer.translate(sphere1, Vector3D(1, 1, -7));	
+	raytracer.rotate(sphere1, 'x', 30); 
+	raytracer.rotate(sphere1, 'z', 45); 
+	raytracer.scale(sphere1, Point3D(0, 0, 0), factor3);
+
+	//Sphere3
+	//raytracer.rotate(sphere2, 'x', 30); 
+	//raytracer.rotate(sphere2, 'y', 45); 
+	raytracer.translate(sphere2, Vector3D(-3, 1, -5));	
+
+	//Plane
+	double factor2[3] = { 6.0, 6.0, 6.0 };
 	raytracer.translate(plane, Vector3D(0, 0, -7));	
 	raytracer.rotate(plane, 'z', 45); 
 	raytracer.scale(plane, Point3D(0, 0, 0), factor2);
