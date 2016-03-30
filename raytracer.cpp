@@ -23,7 +23,7 @@
 
 Raytracer::Raytracer() : _lightSource(NULL) {
 	_root = new SceneDagNode();
-	_maxDepth = 2;
+	_maxDepth = 10;
 }
 
 Raytracer::~Raytracer() {
@@ -226,7 +226,7 @@ void Raytracer::flushPixelBuffer( char *file_name ) {
 	delete _bbuffer;
 }
 
-Colour Raytracer::shadeRay( Ray3D& ray, int depth ) {
+Colour Raytracer::shadeRay( Ray3D& ray, int depth, bool air ) {
 	Colour col(0.0, 0.0, 0.0); 
 	if (depth == _maxDepth) return col;
 	traverseScene(_root, ray); 
@@ -237,22 +237,65 @@ Colour Raytracer::shadeRay( Ray3D& ray, int depth ) {
 		computeShading(ray); 
 		float refl = ray.intersection.mat->refl_coef;
 		float refr = ray.intersection.mat->refr_coef;
-		col = (1 - refl - refr) * ray.col;
+//		col = (1 - refl - refr) * ray.col;
+		col = ray.col;
 
-		if (REFLECTION && refl > 0)
+		if (REFLECTION && air && refl > 0)
 		{
 			// handle reflection
 			float nlength = -2 * ray.dir.dot(ray.intersection.normal);
 			Ray3D ray_refl(ray.intersection.point, nlength * ray.intersection.normal + ray.dir);
 
-			Colour refl_col = shadeRay( ray_refl, depth + 1 );
+			Colour refl_col = shadeRay( ray_refl, depth + 1, air );
 			col = col + refl * refl_col;
 		}
-	}
 
-	
-	// You'll want to call shadeRay recursively (with a different ray, 
-	// of course) here to implement reflection/refraction effects.  
+		if (REFRACTION && refr > 0)
+		{
+			// handle refraction
+			Ray3D ray_refr;
+			ray_refr.origin = ray.intersection.point;
+
+			if (air) // shoot ray from air to material
+			{
+				double nlength = -ray.dir.dot(ray.intersection.normal);
+				Vector3D d1 = ray.dir + nlength * ray.intersection.normal;
+				double cos1 = nlength / ray.dir.length();
+				double sin1 = sqrt(1 - cos1 * cos1);
+				double n2 = ray.intersection.mat->refr_index;
+				double sin2 = sin1 / n2;
+				double cos2 = sqrt(1 - sin2 * sin2);
+				double rlength = nlength / cos2 * sin2;
+				Vector3D d2 = rlength / d1.length() * d1;
+				ray_refr.dir = ray.dir - d1 + d2;
+				//printf("%lf\n", ray_refr.dir.cross(ray.intersection.normal).dot(ray.dir));
+				Colour refr_col = shadeRay( ray_refr, depth + 1, !air );
+				col = col + refr * refr_col;
+			}
+			else // shoot ray from material to air
+			{
+				double nlength = ray.dir.dot(ray.intersection.normal);
+				Vector3D d1 = ray.dir - nlength * ray.intersection.normal;
+				double cos1 = nlength / ray.dir.length();
+				double sin1 = sqrt(1 - cos1 * cos1);
+				double n1 = ray.intersection.mat->refr_index;
+				double sin2 = sin1 * n1;
+				if (sin2 < 1)
+				{
+					double cos2 = sqrt(1 - sin2 * sin2);
+					double rlength = nlength / cos2 * sin2;
+					Vector3D d2 = rlength / d1.length() * d1;
+					ray_refr.dir = ray.dir - d1 + d2;
+					Colour refr_col = shadeRay( ray_refr, depth + 1, !air );
+					//printf("%lf\n", ray_refr.dir.cross(ray.intersection.normal).dot(ray.dir));
+					//printf("%lf %lf %lf\n", refr_col[0], refr_col[1], refr_col[2]);
+					col = col + refr_col; // assume no reflection inside material
+				}
+			}
+		}
+
+		col.clamp();
+	}
 	
 	return col; 
 }	
@@ -267,7 +310,7 @@ void Raytracer::render( int width, int height, Point3D eye, Vector3D view,
 	initPixelBuffer();
 	viewToWorld = initInvViewMatrix(eye, view, up);
 
-	freopen("scene.txt", "w", stdout);
+	//freopen("scene.txt", "w", stdout);
 
 	// Construct a ray for each pixel.
 	for (int i = 0; i < _scrHeight; i++) {
@@ -290,7 +333,7 @@ void Raytracer::render( int width, int height, Point3D eye, Vector3D view,
 						Ray3D ray;
 						ray.origin = viewToWorld * origin;
 						ray.dir = dirWorld;
-						Colour col = shadeRay(ray, 0);
+						Colour col = shadeRay(ray, 0, true);
 
 						_rbuffer[i*width+j] += int(col[0]*255*0.25f);
 						_gbuffer[i*width+j] += int(col[1]*255*0.25f);
@@ -314,7 +357,7 @@ void Raytracer::render( int width, int height, Point3D eye, Vector3D view,
 				ray.origin = viewToWorld * origin;
 				ray.dir = dirWorld;
 
-				Colour col = shadeRay(ray, 0); 
+				Colour col = shadeRay(ray, 0, true); 
 	/*
 				if (ray.intersection.none)
 					printf("_");
@@ -355,14 +398,15 @@ int main(int argc, char* argv[])
 	double fov = 60;
 
 	// Defines a material for shading.
-	Material gold( Colour(0.3, 0.3, 0.3), Colour(0.75164, 0.60648, 0.22648), 
-			Colour(0.628281, 0.555802, 0.366065), 
-			51.2, 0.5, 0.0);
-	Material jade( Colour(0, 0, 0), Colour(0.54, 0.89, 0.63), 
-			Colour(0.316228, 0.316228, 0.316228), 
-			12.8, 0.5, 0.0);
-	Material glass(Colour(0.0, 0.0, 0.0), Colour(0.588235, 0.670588, 0.729412),
-		Colour(0.9, 0.9, 0.9), 1.5, 0.5, 0.0);
+	Material gold( Colour(0.3, 0.3, 0.3), Colour(0.75164, 0.60648, 0.22648),
+			Colour(0.628281, 0.555802, 0.366065),
+			51.2, 0.0, 0.0, 0.0);
+	Material jade( Colour(0, 0, 0), Colour(0.54, 0.89, 0.63),
+			Colour(0.316228, 0.316228, 0.316228),
+			12.8, 0.5, 0.0, 0.0);
+	Material glass( Colour(0.0, 0.0, 0.0), Colour(0.588235, 0.670588, 0.729412),
+			Colour(0.9, 0.9, 0.9),
+			1.5, 0.1, 0.7, 1.5);
 
 	// Defines a point light source.
 	raytracer.addLightSource( new PointLight(Point3D(0, 0, 5), Colour(0.9, 0.9, 0.9)));

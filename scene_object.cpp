@@ -111,9 +111,18 @@ bool UnitSphere::intersect( Ray3D& ray, const Matrix4x4& worldToModel,
 
 		Point3D i_model; // intersection point in object space
 		Point3D new_intersection; // intersection point in world space
-		if (d0 < eps) return false;
-		i_model = x1 + d0 * I;
-		new_intersection = modelToWorld * i_model;
+		if (d0 > eps)
+		{
+			i_model = x1 + d0 * I;
+			new_intersection = modelToWorld * i_model;
+		}
+		else if (d1 > eps)
+		{
+			i_model = x1 + d1 * I;
+			new_intersection = modelToWorld * i_model;
+		}
+		else
+			return false;
 
 		float new_t_value = (new_intersection[0] - ray.origin[0]) / ray.dir[0];
 		if (ray.intersection.none || new_t_value < ray.intersection.t_value)
