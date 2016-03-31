@@ -22,6 +22,7 @@
 #define ANTIALIAS 1
 #define REFLECTION 1
 #define REFRACTION 1
+#define SOFT_SHADOWS 1
 
 Raytracer::Raytracer() : _lightSource(NULL) {
 	_root = new SceneDagNode();
@@ -197,31 +198,38 @@ void Raytracer::computeShading( Ray3D& ray ) {
 
 		// Implement shadows here if needed.
 
-		Colour final_colour(0, 0, 0);
-		curLight->light->ambient(ray);
-		Colour ambient_colour = ray.col;
-		curLight->light->shade(ray);
-		Colour phong_colour = ray.col;
-
-		int count = 0;
-
-		srand((unsigned)time(NULL));
-
-		for (int i = 0; i < _sample_num; ++ i)
+		if (SOFT_SHADOWS)
 		{
-			Vector3D dir_shadow = curLight->light->get_random_sample() - ray.intersection.point;
+			Colour final_colour(0, 0, 0);
+			curLight->light->ambient(ray);
+			Colour ambient_colour = ray.col;
+			curLight->light->shade(ray);
+			Colour phong_colour = ray.col;
+
+			srand((unsigned)time(NULL));
+
+			for (int i = 0; i < _sample_num; ++ i)
+			{
+				Vector3D dir_shadow = curLight->light->get_random_sample() - ray.intersection.point;
+				Ray3D ray_shadow(ray.intersection.point, dir_shadow);
+				traverseScene(_root, ray_shadow);
+				if (!ray_shadow.intersection.none)
+					final_colour = final_colour + ambient_colour;
+				else
+					final_colour = final_colour + phong_colour;
+			}
+			ray.col = 1.0 / _sample_num * final_colour;
+		}
+		else
+		{
+			Vector3D dir_shadow = curLight->light->get_position() - ray.intersection.point;
 			Ray3D ray_shadow(ray.intersection.point, dir_shadow);
 			traverseScene(_root, ray_shadow);
 			if (!ray_shadow.intersection.none)
-				final_colour = final_colour + ambient_colour;
+				curLight->light->ambient(ray);
 			else
-				final_colour = final_colour + phong_colour;
-			if (!ray_shadow.intersection.none)
-				++ count;
+				curLight->light->shade(ray);
 		}
-		ray.col = 1.0 / _sample_num * final_colour;
-//		if (count) printf("%d\n", count);
-
 		curLight = curLight->next;
 	}
 }
