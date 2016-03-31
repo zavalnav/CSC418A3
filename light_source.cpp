@@ -9,8 +9,21 @@
 ***********************************************************/
 
 #include <cmath>
+#include <stdlib.h>
 #include <cstdio>
 #include "light_source.h"
+
+Point3D PointLight::get_random_sample()
+{
+	for (; ; )
+	{
+		double x = (double)rand() / RAND_MAX * _radius * 2 - _radius;
+		double y = (double)rand() / RAND_MAX * _radius * 2 - _radius;
+		double z = (double)rand() / RAND_MAX * _radius * 2 - _radius;
+		if (x * x + y * y + z * z < _radius)
+			return Point3D(x + _pos[0], y + _pos[1], z + _pos[2]);
+	}
+}
 
 void PointLight::ambient( Ray3D& ray ) {
 	// returns the ambient part of phong shading
@@ -35,7 +48,7 @@ void PointLight::shade( Ray3D& ray ) {
 	d.normalize();
 
 	// ambient
-	ray.col = ray.col + ray.intersection.mat->ambient * _col_ambient;
+	ray.col = ray.intersection.mat->ambient * _col_ambient;
 
 	// diffuse
 	ray.col = ray.col + std::max(0.0, n.dot(s)) * ray.intersection.mat->diffuse * _col_diffuse;

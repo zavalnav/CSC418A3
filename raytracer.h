@@ -135,6 +135,9 @@ private:
 	LightListNode *_lightSource;
 	SceneDagNode *_root;
 
+	// number of random samples when doing soft shadows
+	int _sample_num;
+
 	// Pixel buffer.
 	unsigned char* _rbuffer;
 	unsigned char* _gbuffer;

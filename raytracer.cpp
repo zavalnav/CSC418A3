@@ -16,6 +16,8 @@
 #include <cmath>
 #include <iostream>
 #include <cstdlib>
+#include <time.h>
+#include <stdlib.h>
 
 #define ANTIALIAS 1
 #define REFLECTION 1
@@ -23,7 +25,8 @@
 
 Raytracer::Raytracer() : _lightSource(NULL) {
 	_root = new SceneDagNode();
-	_maxDepth = 10;
+	_maxDepth = 4;
+	_sample_num = 500;
 }
 
 Raytracer::~Raytracer() {
@@ -194,13 +197,31 @@ void Raytracer::computeShading( Ray3D& ray ) {
 
 		// Implement shadows here if needed.
 
-		Vector3D dir_shadow = curLight->light->get_position() - ray.intersection.point;
-		Ray3D ray_shadow(ray.intersection.point, dir_shadow);
-		traverseScene(_root, ray_shadow);
-		if (!ray_shadow.intersection.none)
-			curLight->light->ambient(ray);
-		else
-			curLight->light->shade(ray);
+		Colour final_colour(0, 0, 0);
+		curLight->light->ambient(ray);
+		Colour ambient_colour = ray.col;
+		curLight->light->shade(ray);
+		Colour phong_colour = ray.col;
+
+		int count = 0;
+
+		srand((unsigned)time(NULL));
+
+		for (int i = 0; i < _sample_num; ++ i)
+		{
+			Vector3D dir_shadow = curLight->light->get_random_sample() - ray.intersection.point;
+			Ray3D ray_shadow(ray.intersection.point, dir_shadow);
+			traverseScene(_root, ray_shadow);
+			if (!ray_shadow.intersection.none)
+				final_colour = final_colour + ambient_colour;
+			else
+				final_colour = final_colour + phong_colour;
+			if (!ray_shadow.intersection.none)
+				++ count;
+		}
+		ray.col = 1.0 / _sample_num * final_colour;
+//		if (count) printf("%d\n", count);
+
 		curLight = curLight->next;
 	}
 }
@@ -409,7 +430,7 @@ int main(int argc, char* argv[])
 			1.5, 0.1, 0.7, 1.5);
 
 	// Defines a point light source.
-	raytracer.addLightSource( new PointLight(Point3D(0, 0, 5), Colour(0.9, 0.9, 0.9)));
+	raytracer.addLightSource( new PointLight(Point3D(0, 0, 5), 1, Colour(0.9, 0.9, 0.9)));
 	// Add a unit sphere nto the scene with material mat.
 	SceneDagNode* sphere = raytracer.addObject( new UnitSphere(), &gold );
 	SceneDagNode* sphere1 = raytracer.addObject( new UnitSphere(), &gold );
