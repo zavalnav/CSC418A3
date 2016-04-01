@@ -99,6 +99,9 @@ public:
 	// Apply scaling about a fixed point origin.
 	void scale( SceneDagNode* node, Point3D origin, double factor[3] );
 	
+	// A method that helps load scene
+	void loadScene(int width, int height, int scene);
+	
 private:
 	// Allocates and initializes the pixel buffer for rendering, you
 	// could add an interesting background to your scene by modifying 
@@ -123,7 +126,7 @@ private:
 	// After intersection, calculate the colour of the ray by shading it
 	// with all light sources in the scene.
 	void computeShading( Ray3D& ray );
-	
+
 	// Width and height of the viewport.
 	int _scrWidth;
 	int _scrHeight;

@@ -22,11 +22,11 @@
 #define ANTIALIAS 1
 #define REFLECTION 1
 #define REFRACTION 1
-#define SOFT_SHADOWS 1
+#define SOFT_SHADOWS 0
 
 Raytracer::Raytracer() : _lightSource(NULL) {
 	_root = new SceneDagNode();
-	_maxDepth = 4;
+	_maxDepth = 3;
 	_sample_num = 500;
 }
 
@@ -355,7 +355,6 @@ void Raytracer::render( int width, int height, Point3D eye, Vector3D view,
 						imagePlane[1] = (-double(height)/2 + 0.25 + parti)/factor;
 						imagePlane[2] = -1;
 
-
 						Vector3D dir = imagePlane - origin;
 						Vector3D dirWorld = viewToWorld * dir;
 							
@@ -420,12 +419,14 @@ int main(int argc, char* argv[])
 		height = atoi(argv[2]);
 	}
 
-	// Camera parameters.
-	Point3D eye(0, 0, 1);
-	Vector3D view(0, 0, -1);
-	Vector3D up(0, 1, 0);
-	double fov = 60;
+	raytracer.loadScene(width, height, 1);
 
+	return 0;
+}
+
+
+void Raytracer::loadScene(int width, int height, int scene)
+{
 	// Defines a material for shading.
 	Material gold( Colour(0.3, 0.3, 0.3), Colour(0.75164, 0.60648, 0.22648),
 			Colour(0.628281, 0.555802, 0.366065),
@@ -435,54 +436,87 @@ int main(int argc, char* argv[])
 			12.8, 0.5, 0.0, 0.0);
 	Material glass( Colour(0.0, 0.0, 0.0), Colour(0.588235, 0.670588, 0.729412),
 			Colour(0.9, 0.9, 0.9),
-			1.5, 0.1, 0.7, 1.5);
+			1.5, 1.0, 1.0, 1.5);
 
-	// Defines a point light source.
-	raytracer.addLightSource( new PointLight(Point3D(0, 0, 5), 1, Colour(0.9, 0.9, 0.9)));
-	// Add a unit sphere nto the scene with material mat.
-	SceneDagNode* sphere = raytracer.addObject( new UnitSphere(), &gold );
-	SceneDagNode* sphere1 = raytracer.addObject( new UnitSphere(), &gold );
-	SceneDagNode* sphere2 = raytracer.addObject( new UnitSphere(), &glass );
-	//SceneDagNode* sphere3 = raytracer.addObject( new UnitSphere(), &gold );
-	//SceneDagNode* sphere4 = raytracer.addObject( new UnitSphere(), &gold );
+	if (scene == 0)
+	{
+		// Camera parameters.
+		Point3D eye(0, 0, 1);
+		Vector3D view(0, 0, -1);
+		Vector3D up(0, 1, 0);
+		double fov = 60;
 
-	SceneDagNode* plane = raytracer.addObject( new UnitSquare(), &jade );
+		// Defines a point light source.
+		addLightSource( new PointLight(Point3D(0, 0, 5), 1, Colour(0.9, 0.9, 0.9)));
+		// Add a unit sphere nto the scene with material mat.
+		SceneDagNode* sphere = addObject( new UnitSphere(), &gold );
+		SceneDagNode* sphere1 = addObject( new UnitSphere(), &gold );
+		SceneDagNode* sphere2 = addObject( new UnitSphere(), &glass );
+		//SceneDagNode* sphere3 = raytracer.addObject( new UnitSphere(), &gold );
+		//SceneDagNode* sphere4 = raytracer.addObject( new UnitSphere(), &gold );
+
+		SceneDagNode* plane = addObject( new UnitSquare(), &jade );
 	
-	// Apply some transformations to the unit sphere.
-	//Sphere1
-	double factor1[3] = { 1.0, 2.0, 1.0 };
-	raytracer.translate(sphere, Vector3D(0, 0, -5));	
-	raytracer.rotate(sphere, 'x', -45); 
-	raytracer.rotate(sphere, 'z', 45); 
-	raytracer.scale(sphere, Point3D(0, 0, 0), factor1);
+		// Apply some transformations to the unit sphere.
+		//Sphere1
+		double factor1[3] = { 1.0, 2.0, 1.0 };
+		translate(sphere, Vector3D(0, 0, -5));
+		rotate(sphere, 'x', -45); 
+		rotate(sphere, 'z', 45); 
+		scale(sphere, Point3D(0, 0, 0), factor1);
 
-	//Sphere2
-	double factor3[3] = { 0.5, 0.5, 0.5 };
-	raytracer.translate(sphere1, Vector3D(1, 1, -7));	
-	raytracer.rotate(sphere1, 'x', 30); 
-	raytracer.rotate(sphere1, 'z', 45); 
-	raytracer.scale(sphere1, Point3D(0, 0, 0), factor3);
+		//Sphere2
+		double factor3[3] = { 0.5, 0.5, 0.5 };
+		translate(sphere1, Vector3D(1, 1, -7));	
+		rotate(sphere1, 'x', 30); 
+		rotate(sphere1, 'z', 45); 
+		scale(sphere1, Point3D(0, 0, 0), factor3);
 
-	//Sphere3
-	//raytracer.rotate(sphere2, 'x', 30); 
-	//raytracer.rotate(sphere2, 'y', 45); 
-	raytracer.translate(sphere2, Vector3D(-3, 1, -5));	
+		//Sphere3
+		//raytracer.rotate(sphere2, 'x', 30); 
+		//raytracer.rotate(sphere2, 'y', 45); 
+		translate(sphere2, Vector3D(-3, 1, -5));	
 
-	//Plane
-	double factor2[3] = { 6.0, 6.0, 6.0 };
-	raytracer.translate(plane, Vector3D(0, 0, -7));	
-	raytracer.rotate(plane, 'z', 45); 
-	raytracer.scale(plane, Point3D(0, 0, 0), factor2);
+		//Plane
+		double factor2[3] = { 6.0, 6.0, 6.0 };
+		translate(plane, Vector3D(0, 0, -7));	
+		rotate(plane, 'z', 45); 
+		scale(plane, Point3D(0, 0, 0), factor2);
 
-	// Render the scene, feel free to make the image smaller for
-	// testing purposes.	
-	raytracer.render(width, height, eye, view, up, fov, "view1.bmp");
-	
-	// Render it from a different point of view.
-	Point3D eye2(4, 2, 1);
-	Vector3D view2(-4, -2, -6);
-	raytracer.render(width, height, eye2, view2, up, fov, "view2.bmp");
-	
-	return 0;
+		// Render the scene, feel free to make the image smaller for
+		// testing purposes.	
+		render(width, height, eye, view, up, fov, "view1.bmp");
+
+		// Render it from a different point of view.
+		Point3D eye2(4, 2, 1);
+		Vector3D view2(-4, -2, -6);
+		render(width, height, eye2, view2, up, fov, "view2.bmp");
+	}
+	if (scene == 1)
+	{
+		Point3D eye(0, 1, 4);
+		Vector3D view(0, 0, -1);
+		Vector3D up(0, 1, 0);
+		double fov = 60;
+
+		addLightSource( new PointLight(Point3D(0, -5, -1), 1, Colour(0.9, 0.9, 0.9)));
+
+		for (int i = 0; i < 6; ++ i)
+			for (int j = 0; j < 6; ++ j)
+			{
+				SceneDagNode* plane;
+				if ((i + j) & 1)
+					plane = addObject( new UnitSquare(), &jade );
+				else
+					plane = addObject( new UnitSquare(), &gold );
+				rotate(plane, 'x', 90);
+				translate(plane, Vector3D(i - 2.5, j - 2.5, 0.0));
+			}
+
+		SceneDagNode* sphere = addObject( new UnitSphere(), &glass );
+		translate(sphere, Vector3D(0, 2, 0));
+
+		render(width, height, eye, view, up, fov, "refraction.bmp");
+	}
 }
 
