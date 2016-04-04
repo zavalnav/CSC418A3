@@ -146,11 +146,11 @@ bool UnitSphere::intersect( Ray3D& ray, const Matrix4x4& worldToModel,
 
 bool UnitCone::intersect( Ray3D& ray, const Matrix4x4& worldToModel,
 		const Matrix4x4& modelToWorld ){
-	printf("here\n");
+	//printf("here\n");
 	Point3D origin = worldToModel * ray.origin;
 	Vector3D dir = worldToModel * ray.dir;
 
-	printf("origin: [%d %d %d], dir: [%d %d %d]\n", origin[0],  origin[1], origin[2], dir[0], dir[1], dir[2]);
+	//printf("origin: [%d %d %d], dir: [%d %d %d]\n", origin[0],  origin[1], origin[2], dir[0], dir[1], dir[2]);
 
 	double A = pow(dir[1], 2) + pow(dir[2], 2) - pow(dir[0], 2);
 	double B = 2 * origin[1] * dir[1] + 2 * origin[2] * dir[2] - 2 * origin[0] * dir[0];
@@ -164,26 +164,27 @@ bool UnitCone::intersect( Ray3D& ray, const Matrix4x4& worldToModel,
 		if (t1 > 0){
 			//Intersection of Ray with the cone
 			P = origin + t1 * dir;
-			printf("Intersection point: %d %d %d\n", P[0], P[1], P[2]);
-			//make sure x within the range [0,1]
+			//printf("Intersection point: %d %d %d\n", P[0], P[1], P[2]);
+			
 		}
 		else{
 			double t2 = (-B + sqrt(pow(B, 2) - 4*A*C))/2*A;
 			//Intersection of Ray with the cone
 			P = origin + t2 * dir;
 		}
+		//make sure x within the range [0,1]
 		if (P[0] >= 0 && P[0] <=1){
 			//found our intersection
 			Point3D new_intersection = modelToWorld * P;
 			float new_t_value = (new_intersection[0] - ray.origin[0]) / ray.dir[0];
 			if (ray.intersection.none || new_t_value < ray.intersection.t_value)
 			{
-			ray.intersection.none = false;
-			ray.intersection.point = new_intersection;
-			ray.intersection.t_value = new_t_value;
-			//ray.intersection.normal = transNorm(worldToModel, i_model - x0);
-			ray.intersection.normal.normalize();
-			return true;
+				ray.intersection.none = false;
+				ray.intersection.point = new_intersection;
+				ray.intersection.t_value = new_t_value;
+				ray.intersection.normal = transNorm(worldToModel, P - Point3D(0,0,0));
+				ray.intersection.normal.normalize();
+				return true;
 			}	
 		}
 	} 
