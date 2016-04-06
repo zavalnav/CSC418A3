@@ -19,9 +19,9 @@
 #include <time.h>
 #include <stdlib.h>
 
-#define ANTIALIAS 1
-#define REFLECTION 1
-#define REFRACTION 1
+#define ANTIALIAS 0
+#define REFLECTION 0
+#define REFRACTION 0
 #define SOFT_SHADOWS 0
 
 Raytracer::Raytracer() : _lightSource(NULL) {
@@ -419,7 +419,7 @@ int main(int argc, char* argv[])
 		height = atoi(argv[2]);
 	}
 
-	raytracer.loadScene(width, height, 1);
+	raytracer.loadScene(width, height, 0);
 
 	return 0;
 }
@@ -452,6 +452,12 @@ void Raytracer::loadScene(int width, int height, int scene)
 		SceneDagNode* sphere = addObject( new UnitSphere(), &gold );
 		SceneDagNode* sphere1 = addObject( new UnitSphere(), &gold );
 		SceneDagNode* sphere2 = addObject( new UnitSphere(), &glass );
+
+		SceneDagNode* cone = addObject( new UnitCone(), &glass );
+
+		//double f[3] = {0.4, 0.4, 0.4};
+		//scale(cone, Point3D(0, 0, 0), f);
+
 		//SceneDagNode* sphere3 = raytracer.addObject( new UnitSphere(), &gold );
 		//SceneDagNode* sphere4 = raytracer.addObject( new UnitSphere(), &gold );
 
@@ -519,4 +525,3 @@ void Raytracer::loadScene(int width, int height, int scene)
 		render(width, height, eye, view, up, fov, "refraction.bmp");
 	}
 }
-
