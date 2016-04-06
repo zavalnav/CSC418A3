@@ -13,16 +13,17 @@
 #include <cstdio>
 #include "light_source.h"
 
+const double PI = acos(-1.0);
+
 Point3D PointLight::get_random_sample()
 {
-	for (; ; )
-	{
-		double x = (double)rand() / RAND_MAX * _radius * 2 - _radius;
-		double y = (double)rand() / RAND_MAX * _radius * 2 - _radius;
-		double z = (double)rand() / RAND_MAX * _radius * 2 - _radius;
-		if (x * x + y * y + z * z < _radius)
-			return Point3D(x + _pos[0], y + _pos[1], z + _pos[2]);
-	}
+	double a1 = (double)rand() / RAND_MAX * 2 * PI;
+	double a2 = (double)rand() / RAND_MAX * 2 * PI;
+	double r = (double)rand() / RAND_MAX * _radius;
+	return Point3D(
+		_pos[0] + r * sin(a1) * cos(a2),
+		_pos[1] + r * sin(a1) * sin(a2),
+		_pos[0] + r * cos(a1));
 }
 
 void PointLight::ambient( Ray3D& ray ) {

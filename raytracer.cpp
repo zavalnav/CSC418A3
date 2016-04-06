@@ -19,15 +19,16 @@
 #include <time.h>
 #include <stdlib.h>
 
-#define ANTIALIAS 0
-#define REFLECTION 0
+#define ANTIALIAS 1
+#define REFLECTION 1
+#define GLOSSY_REFLECTION 1 // only available when REFLECTION = 1
 #define REFRACTION 0
 #define SOFT_SHADOWS 0
 
 Raytracer::Raytracer() : _lightSource(NULL) {
 	_root = new SceneDagNode();
-	_maxDepth = 3;
-	_sample_num = 500;
+	_maxDepth = 2;
+	_sample_num = 100;
 }
 
 Raytracer::~Raytracer() {
@@ -271,12 +272,39 @@ Colour Raytracer::shadeRay( Ray3D& ray, int depth, bool air ) {
 
 		if (REFLECTION && air && refl > 0)
 		{
-			// handle reflection
-			float nlength = -2 * ray.dir.dot(ray.intersection.normal);
-			Ray3D ray_refl(ray.intersection.point, nlength * ray.intersection.normal + ray.dir);
+			if (GLOSSY_REFLECTION && ray.intersection.mat->refl_sigma > 0)
+			{
+				// handle blurred reflection
+				float nlength = -2 * ray.dir.dot(ray.intersection.normal);
+				Vector3D refl_dir = nlength * ray.intersection.normal + ray.dir;
+				refl_dir.normalize();
 
-			Colour refl_col = shadeRay( ray_refl, depth + 1, air );
-			col = col + refl * refl_col;
+				Colour refl_col(0.0, 0.0, 0.0);
+
+				for (int i = 0; i < _sample_num; ++ i)
+				{
+					Vector3D u(-refl_dir[1], refl_dir[0], 0);
+					u.normalize();
+					Vector3D v = u.cross(refl_dir);
+					double a = (double)rand() / RAND_MAX * 2 * M_PI;
+					double r = (double)rand() / RAND_MAX * ray.intersection.mat->refl_sigma;
+					Vector3D random_dir = refl_dir + r * (sin(a) * u + cos(a) * v);
+
+					Ray3D ray_refl(ray.intersection.point, random_dir);
+					Colour this_col = shadeRay( ray_refl, depth + 1, air );
+					refl_col = refl_col + refl * this_col;
+				}
+				col = col + refl / _sample_num * refl_col;
+			}
+			else
+			{
+				// handle reflection
+				float nlength = -2 * ray.dir.dot(ray.intersection.normal);
+				Ray3D ray_refl(ray.intersection.point, nlength * ray.intersection.normal + ray.dir);
+
+				Colour refl_col = shadeRay( ray_refl, depth + 1, air );
+				col = col + refl * refl_col;
+			}
 		}
 
 		if (REFRACTION && refr > 0)
@@ -339,7 +367,7 @@ void Raytracer::render( int width, int height, Point3D eye, Vector3D view,
 	initPixelBuffer();
 	viewToWorld = initInvViewMatrix(eye, view, up);
 
-	//freopen("scene.txt", "w", stdout);
+	freopen("scene.txt", "w", stdout);
 
 	// Construct a ray for each pixel.
 	for (int i = 0; i < _scrHeight; i++) {
@@ -429,14 +457,14 @@ void Raytracer::loadScene(int width, int height, int scene)
 {
 	// Defines a material for shading.
 	Material gold( Colour(0.3, 0.3, 0.3), Colour(0.75164, 0.60648, 0.22648),
-			Colour(0.628281, 0.555802, 0.366065),
-			51.2, 0.0, 0.0, 0.0);
+			Colour(0.628281, 0.555802, 0.366065), 51.2,
+			0.0, 0.0, 0.0, 0.0);
 	Material jade( Colour(0, 0, 0), Colour(0.54, 0.89, 0.63),
-			Colour(0.316228, 0.316228, 0.316228),
-			12.8, 0.5, 0.0, 0.0);
+			Colour(0.316228, 0.316228, 0.316228), 12.8,
+			0.5, 1.0, 0.0, 0.0);
 	Material glass( Colour(0.0, 0.0, 0.0), Colour(0.588235, 0.670588, 0.729412),
-			Colour(0.9, 0.9, 0.9),
-			1.5, 1.0, 1.0, 1.5);
+			Colour(0.9, 0.9, 0.9), 1.5,
+			1.0, 1.0, 1.0, 1.5);
 
 	if (scene == 0)
 	{
