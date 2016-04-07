@@ -195,6 +195,119 @@ bool UnitCone::intersect( Ray3D& ray, const Matrix4x4& worldToModel,
 }
 
 
+bool UnitCone::intersect( Ray3D& ray, const Matrix4x4& worldToModel,
+		const Matrix4x4& modelToWorld ){
+
+        Point3D origin = worldToModel * ray.origin;
+        Vector3D dir = worldToModel * ray.dir;
+
+        float twoPI = (float)(M_PI * 2.0);
+        float A=1;
+        float B=1;
+        float C=-1;
+        float A2, B2, C2;
+        A2 = 2.0f * A;
+        B2 = 2.0f * B;
+        C2 = 2.0f * C;
+        float a2_1;
+        float a, b, c, discrim;
+        float dMagOS;
+        float zmin = 0;
+        float zmax = 1;
+        float miny, maxy;
+        float t_value, tWS;
+        float theta;
+        float thetamax = 45;
+        float t_valueWorld;
+
+
+        miny = -zmin - EPSILON; 
+        maxy = zmax + EPSILON;
+        theta = (float)(thetamax * M_PI / 180.0f - M_PI);
+
+
+        dMagOS = 1.0f / dir.length();  
+        dir.normalize();
+        int flag = false;
+
+
+        a = A * dir[0] * dir[0] + B * dir[1] * dir[1] + C * dir[2] * dir[2];
+        b = A2 * origin[0] * dir[0] + B2 * origin[1] * dir[1] + C2 * origin[2] * dir[2];
+        c = A * origin[0] * origin[0] + B * origin[1] * origin[1] + C * origin[2] * origin[2];
+
+        if (a == 0.0f) { 
+            t_value = - c / b;
+            flag = true;    
+        } else {
+            discrim = b * b - 4.0 * a * c; 
+
+            if (discrim < 0) return false; // no intersection
+
+            discrim = (float)sqrt(discrim);    
+            a2_1 = 1 / (2 * a);               
+            t_value = (-b - discrim) * a2_1;            // near intersection
+
+            if (t_value < 0) {                       // near intersection too close
+                t_value = (-b + discrim) * a2_1;        // use far intersection
+                flag = true;                        // remember this
+            }
+        }
+
+        t_valueWorld = t_value * dMagOS; // need to scale intersection tOS to get tWS
+        if ((t_valueWorld > ray.intersection.t_value) || (t_valueWorld < 0)) return false;   // trivial reject
+
+        
+       	Point3D hit_point = origin +  t_value * dir;
+
+         if (hit_point[1] < miny || hit_point[1] > maxy)   // outside clip box?
+        {
+            if (!flag) { // alright, so the near intersection is outside the clipping box,
+                         // but that doesn't mean the far intersection isn't inside 
+                t_value = (-b + discrim) * a2_1;    // compute the far intersection
+                t_valueWorld = t_value * dMagOS;             // need to scale intersection t
+                if ((t_valueWorld > ray.intersection.t_value) || (t_valueWorld < 0)) return false; // trivial reject
+
+                hit_point = origin + t_value*dir;
+                if (hit_point[1] < miny || hit_point[1] > maxy) return false;
+
+            } else {    // both near and far intersection flunked clip box
+                return false;
+            }
+        }
+        if (theta != twoPI) {       // now clip against the accept angle
+            float a = (float)atan2(-hit_point[2], -hit_point[0]);
+            if (a > theta) {
+
+                if (!flag) { // alright, so the near intersection is outside the accept angle,
+                             // but that doesn't mean the far intersection isn't inside 
+                    t_value = (-b + discrim) * a2_1;    // compute the far intersection
+                    t_valueWorld = t_value * dMagOS;             // need to scale intersection t
+                    if ((t_valueWorld > ray.intersection.t_value) || (t_valueWorld < 0)) return false; // trivial reject
+
+                    hit_point = origin + t_value * dir; // update intersection point
+                    a = (float)atan2(-hit_point[2], -hit_point[0]);
+                    if (a > theta) return false;
+
+                    // we haven't actually tested this yet at this point
+                    if (hit_point[1] < miny || hit_point[1] > maxy) return false;
+
+                } else {    // both near and far intersection flunked accept angle
+                    return false;
+                }
+            }
+        }
+	ray.intersection.point = hit_point;
+        ray.intersection.t_value = t_valueWorld;   
+        Vector3D n = Vector3D(
+        A2 * ray.intersection.point[0], 
+        B2 * ray.intersection.point[1],
+        C2 * ray.intersection.point[2]);
+        ray.intersection.normal = transNorm(worldToModel, n);
+		ray.intersection.normal.normalize();
+        return true;
+}
+
+
 
 
 
