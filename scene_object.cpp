@@ -1,11 +1,8 @@
 /***********************************************************
      Starter code for Assignment 3
-
      This code was originally written by Jack Wang for
 		    CSC418, SPRING 2005
-
 		implements scene_object.h
-
 ***********************************************************/
 
 #include <cmath>
@@ -83,18 +80,6 @@ bool UnitSquare::intersect( Ray3D& ray, const Matrix4x4& worldToModel,
 
 bool UnitSphere::intersect( Ray3D& ray, const Matrix4x4& worldToModel,
 		const Matrix4x4& modelToWorld ) {
-	// TODO: implement intersection code for UnitSphere, which is centred 
-	// on the origin.  
-	//
-	// Your goal here is to fill ray.intersection with correct values
-	// should an intersection occur.  This includes intersection.point, 
-	// intersection.normal, intersection.none, intersection.t_value.   
-	//
-	// HINT: Remember to first transform the ray into object space  
-	// to simplify the intersection test.
-
-	// The intersection point & normal are in world space!
-
 	Point3D x1 = worldToModel * ray.origin; // o
 	Point3D x2 = worldToModel * (ray.origin + ray.dir);
 	Point3D x0 = Point3D(0, 0, 0); // c
@@ -129,6 +114,7 @@ bool UnitSphere::intersect( Ray3D& ray, const Matrix4x4& worldToModel,
 		float new_t_value = (new_intersection[0] - ray.origin[0]) / ray.dir[0];
 		if (ray.intersection.none || new_t_value + eps < ray.intersection.t_value)
 		{
+			ray.intersection.pointOS = i_model;
 			ray.intersection.none = false;
 			ray.intersection.point = new_intersection;
 			ray.intersection.t_value = new_t_value;
@@ -141,8 +127,6 @@ bool UnitSphere::intersect( Ray3D& ray, const Matrix4x4& worldToModel,
 	}
 	else
 		return false;
-
-	//return !ray.intersection.none;
 }
 
 
@@ -277,62 +261,6 @@ bool UnitCone::intersect( Ray3D& ray, const Matrix4x4& worldToModel,
         }
 
 	return flag;
-/*
-        t_valueWorld = t_value * dMagOS; // need to scale intersection tOS to get tWS
-        if ((t_valueWorld > ray.intersection.t_value) || (t_valueWorld < 0)) return false;   // trivial reject
-
-        
-       	Point3D hit_point = origin +  t_value * dir;
-
-         if (hit_point[1] < miny || hit_point[1] > maxy)   // outside clip box?
-        {
-            if (!flag) { // alright, so the near intersection is outside the clipping box,
-                         // but that doesn't mean the far intersection isn't inside 
-                t_value = (-b + discrim) * a2_1;    // compute the far intersection
-                t_valueWorld = t_value * dMagOS;             // need to scale intersection t
-                if ((t_valueWorld > ray.intersection.t_value) || (t_valueWorld < 0)) return false; // trivial reject
-
-                hit_point = origin + t_value*dir;
-                if (hit_point[1] < miny || hit_point[1] > maxy) return false;
-
-            } else {    // both near and far intersection flunked clip box
-                return false;
-            }
-        }
-        if (theta != twoPI) {       // now clip against the accept angle
-            float a = (float)atan2(-hit_point[2], -hit_point[0]);
-            if (a > theta) {
-
-                if (!flag) { // alright, so the near intersection is outside the accept angle,
-                             // but that doesn't mean the far intersection isn't inside 
-                    t_value = (-b + discrim) * a2_1;    // compute the far intersection
-                    t_valueWorld = t_value * dMagOS;             // need to scale intersection t
-                    if ((t_valueWorld > ray.intersection.t_value) || (t_valueWorld < 0)) return false; // trivial reject
-
-                    hit_point = origin + t_value * dir; // update intersection point
-                    a = (float)atan2(-hit_point[2], -hit_point[0]);
-                    if (a > theta) return false;
-
-                    // we haven't actually tested this yet at this point
-                    if (hit_point[1] < miny || hit_point[1] > maxy) return false;
-
-                } else {    // both near and far intersection flunked accept angle
-                    return false;
-                }
-            }
-        }
-	ray.intersection.point = hit_point;
-        ray.intersection.t_value = t_valueWorld;   
-        Vector3D n = Vector3D(
-        A2 * ray.intersection.point[0], 
-        B2 * ray.intersection.point[1],
-        C2 * ray.intersection.point[2]);
-        ray.intersection.normal = transNorm(worldToModel, n);
-		ray.intersection.normal.normalize();
-        return true;*/
 }
-
-
-
 
 

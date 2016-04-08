@@ -20,14 +20,14 @@
 #include <stdlib.h>
 
 #define ANTIALIAS 0
-#define REFLECTION 0
+#define REFLECTION 1
 #define GLOSSY_REFLECTION 0 // only available when REFLECTION = 1
-#define REFRACTION 0
+#define REFRACTION 1
 #define SOFT_SHADOWS 0
 
 Raytracer::Raytracer() : _lightSource(NULL) {
 	_root = new SceneDagNode();
-	_maxDepth = 2;
+	_maxDepth = 4;
 	_sample_num = 100;
 }
 
@@ -176,6 +176,8 @@ void Raytracer::traverseScene( SceneDagNode* node, Ray3D& ray ) {
 		if (node->obj->intersect(ray, _worldToModel, _modelToWorld)) {
 			//printf("intersected an object\n");
  			ray.intersection.mat = node->mat;
+			ray.intersection.texture_enabled = node->obj->texture_enabled;
+			ray.intersection.texture = node->obj->getTexture();
 		}
 	}
 	// Traverse the children.
@@ -225,12 +227,11 @@ void Raytracer::computeShading( Ray3D& ray ) {
 		{
 			Vector3D dir_shadow = curLight->light->get_position() - ray.intersection.point;
 			Ray3D ray_shadow(ray.intersection.point, dir_shadow);
+			//printf("%f %f %f\n", ray_shadow.origin[0], ray_shadow.origin[1], ray_shadow.origin[2]);
+			//printf("%f %f %f\n", ray_shadow.dir[0], ray_shadow.dir[1], ray_shadow.dir[2]);
 			traverseScene(_root, ray_shadow);
 			if (!ray_shadow.intersection.none)
-			{
 				curLight->light->ambient(ray);
-				printf("mm\n");
-			}
 			else
 				curLight->light->shade(ray);
 		}
@@ -270,7 +271,6 @@ Colour Raytracer::shadeRay( Ray3D& ray, int depth, bool air ) {
 		computeShading(ray); 
 		float refl = ray.intersection.mat->refl_coef;
 		float refr = ray.intersection.mat->refr_coef;
-//		col = (1 - refl - refr) * ray.col;
 		col = ray.col;
 
 		if (REFLECTION && air && refl > 0)
@@ -417,18 +417,18 @@ void Raytracer::render( int width, int height, Point3D eye, Vector3D view,
 				ray.dir = dirWorld;
 
 				Colour col = shadeRay(ray, 0, true); 
-	
+	/*
 				if (ray.intersection.none)
 					printf("_");
 				else
 					printf("o");
-	
+	*/
 				_rbuffer[i*width+j] = int(col[0]*255);
 				_gbuffer[i*width+j] = int(col[1]*255);
 				_bbuffer[i*width+j] = int(col[2]*255);
 			}
 		}
-		printf("\n");
+//		printf("\n");
 	}
 
 	flushPixelBuffer(fileName);
@@ -450,7 +450,7 @@ int main(int argc, char* argv[])
 		height = atoi(argv[2]);
 	}
 
-	raytracer.loadScene(width, height, 0);
+	raytracer.loadScene(width, height, 1);
 
 	return 0;
 }
@@ -469,6 +469,8 @@ void Raytracer::loadScene(int width, int height, int scene)
 			Colour(0.9, 0.9, 0.9), 1.5,
 			1.0, 1.0, 1.0, 1.5);
 
+	Texture grass("grass.bmp");
+
 	if (scene == 0)
 	{
 		// Camera parameters.
@@ -480,11 +482,11 @@ void Raytracer::loadScene(int width, int height, int scene)
 		// Defines a point light source.
 		addLightSource( new PointLight(Point3D(0, 0, 5), 1, Colour(0.9, 0.9, 0.9)));
 		// Add a unit sphere nto the scene with material mat.
-		SceneDagNode* sphere = addObject( new UnitSphere(), &gold );
-		SceneDagNode* sphere1 = addObject( new UnitSphere(), &gold );
-		SceneDagNode* sphere2 = addObject( new UnitSphere(), &glass );
+		SceneDagNode* sphere = addObject( new UnitSphere(grass), &gold );
+		SceneDagNode* sphere1 = addObject( new UnitSphere(grass), &gold );
+		SceneDagNode* sphere2 = addObject( new UnitSphere(grass), &glass );
 
-//		SceneDagNode* cone = addObject( new UnitCone(), &glass );
+		//SceneDagNode* cone = addObject( new UnitCone(), &glass );
 
 		//double f[3] = {0.4, 0.4, 0.4};
 		//scale(cone, Point3D(0, 0, 0), f);
@@ -550,7 +552,7 @@ void Raytracer::loadScene(int width, int height, int scene)
 				translate(plane, Vector3D(i - 2.5, j - 2.5, 0.0));
 			}
 
-		SceneDagNode* sphere = addObject( new UnitSphere(), &glass );
+		SceneDagNode* sphere = addObject( new UnitSphere(grass), &glass );
 		translate(sphere, Vector3D(0, 2, 0));
 
 		render(width, height, eye, view, up, fov, "refraction.bmp");

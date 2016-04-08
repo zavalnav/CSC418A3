@@ -10,20 +10,19 @@
 
 #include <cmath>
 #include <stdlib.h>
-#include <stdio.h>
+#include <cstdio>
 #include "light_source.h"
-
-const double PI = acos(-1.0);
-
+#define TEXTURE_MAPPING 0
 Point3D PointLight::get_random_sample()
 {
-	double a1 = (double)rand() / RAND_MAX * 2 * PI;
-	double a2 = (double)rand() / RAND_MAX * 2 * PI;
-	double r = (double)rand() / RAND_MAX * _radius;
-	return Point3D(
-		_pos[0] + r * sin(a1) * cos(a2),
-		_pos[1] + r * sin(a1) * sin(a2),
-		_pos[0] + r * cos(a1));
+	for (; ; )
+	{
+		double x = (double)rand() / RAND_MAX * _radius * 2 - _radius;
+		double y = (double)rand() / RAND_MAX * _radius * 2 - _radius;
+		double z = (double)rand() / RAND_MAX * _radius * 2 - _radius;
+		if (x * x + y * y + z * z < _radius)
+			return Point3D(x + _pos[0], y + _pos[1], z + _pos[2]);
+	}
 }
 
 void PointLight::ambient( Ray3D& ray ) {
@@ -32,7 +31,7 @@ void PointLight::ambient( Ray3D& ray ) {
 	ray.col = ray.intersection.mat->ambient * _col_ambient;
 }
 
-void PointLight::shade( Ray3D& ray ) {
+void PointLight::shade( Ray3D& ray) {
 	// TODO: implement this function to fill in values for ray.col 
 	// using phong shading.  Make sure your vectors are normalized, and
 	// clamp colour values to 1.0.
@@ -41,6 +40,27 @@ void PointLight::shade( Ray3D& ray ) {
 	// is available.  So be sure that traverseScene() is called on the ray 
 	// before this function.  
 
+	Colour kd = ray.intersection.mat->diffuse;
+
+	if (TEXTURE_MAPPING && ray.intersection.texture_enabled)
+	{
+		int row, col;
+        //get texel coords
+        SphereMapping sphereMap;
+        sphereMap.getTexel(&row, &col, ray.intersection.texture.getHeight(), ray.intersection.texture.getWidth(), ray.intersection.pointOS);
+            //change diffuse coefficient to that of texture
+            unsigned char * red = ray.intersection.texture.getRed(row,col);
+            unsigned char * green = ray.intersection.texture.getGreen(row,col);
+            unsigned char * blue = ray.intersection.texture.getBlue(row,col);
+            //get values for the color components in proper type
+            double RedValue = (*red)/255.0;
+            double BlueValue = (*blue)/255.0;
+            double GreenValue = (*green)/255.0;
+            kd = ray.intersection.mat->diffuse*Colour(RedValue, GreenValue, BlueValue); 
+	}
+
+
+
 	Vector3D s = _pos - ray.intersection.point; // light direction
 	Vector3D n = ray.intersection.normal; // normal
 	Vector3D d = -1.0 * ray.dir; // ray direction
@@ -48,17 +68,12 @@ void PointLight::shade( Ray3D& ray ) {
 	s.normalize();
 	d.normalize();
 
-	printf("xxx\n");
-	printf("%lf %lf %lf\n", n[0], n[1], n[2]);
-	printf("%lf %lf %lf\n", ray.intersection.point[0], ray.intersection.point[1], ray.intersection.point[2]);
-	printf("%lf\n", n.dot(s));
-	printf("zzz\n");
-
 	// ambient
 	ray.col = ray.intersection.mat->ambient * _col_ambient;
 
 	// diffuse
-	ray.col = ray.col + std::max(0.0, n.dot(s)) * ray.intersection.mat->diffuse * _col_diffuse;
+	// ray.col = ray.col + std::max(0.0, n.dot(s)) * ray.intersection.mat->diffuse * _col_diffuse;
+	ray.col = ray.col + std::max(0.0, n.dot(s)) * kd * _col_diffuse;
 
 	// specular
 	Vector3D m = 2 * n.dot(s) * n - s;

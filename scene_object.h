@@ -18,6 +18,15 @@ class SceneObject {
 public:
 	// Returns true if an intersection occured, false otherwise.
 	virtual bool intersect( Ray3D&, const Matrix4x4&, const Matrix4x4& ) = 0;
+        Texture getTexture()
+        {
+            return texture;
+        }
+
+	bool texture_enabled;
+
+protected:
+	Texture texture;
 };
 
 // Example primitive you can create, this is a unit square on 
@@ -30,13 +39,22 @@ public:
 
 class UnitSphere : public SceneObject {
 public:
+        UnitSphere(Texture text)
+        {
+		texture = text;
+		texture_enabled = true;
+        }
 	bool intersect( Ray3D& ray, const Matrix4x4& worldToModel,
 			const Matrix4x4& modelToWorld );
 };
-
 
 class UnitCone : public SceneObject {
 public:
+        UnitCone()
+        {
+		texture_enabled = false;
+        }
 	bool intersect( Ray3D& ray, const Matrix4x4& worldToModel,
 			const Matrix4x4& modelToWorld );
 };
+

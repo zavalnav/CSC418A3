@@ -387,5 +387,23 @@ std::ostream& operator <<(std::ostream& os, const Matrix4x4& M) {
 		<< M[3][2] << " " << M[3][3] << "]";
 }
 
+bool SphereMapping::getTexel(int *row, int *column, int height, int width, Point3D intersection) {
+
+        //printf("Entering SphereMapping::getTexel\n");
+        double alpha, beta;
+        //Beta = cos-1(z), since sphere is centered at origin in this computation
+        beta = asin(intersection[1]/1.0001);
+        alpha = atan2(intersection[2]/1.0001,intersection[0]/1.0001);
+        //printf("alpha is %f, beta is %f x is %f y is %f, z is %f\n", alpha, beta, intersection[0], intersection[1], intersection[2]);
+        
+        (*row) = round((0.5+alpha/(2*M_PI))*width);
+        (*column) = round((0.5-beta/M_PI)*height);
+
+        //printf("row is %d, col is %d\n", *row, *column);
+
+        return true;
+
+}
+
 
 
