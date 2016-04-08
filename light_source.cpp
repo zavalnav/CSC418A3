@@ -10,7 +10,7 @@
 
 #include <cmath>
 #include <stdlib.h>
-#include <cstdio>
+#include <stdio.h>
 #include "light_source.h"
 
 const double PI = acos(-1.0);
@@ -47,6 +47,12 @@ void PointLight::shade( Ray3D& ray ) {
 
 	s.normalize();
 	d.normalize();
+
+	printf("xxx\n");
+	printf("%lf %lf %lf\n", n[0], n[1], n[2]);
+	printf("%lf %lf %lf\n", ray.intersection.point[0], ray.intersection.point[1], ray.intersection.point[2]);
+	printf("%lf\n", n.dot(s));
+	printf("zzz\n");
 
 	// ambient
 	ray.col = ray.intersection.mat->ambient * _col_ambient;

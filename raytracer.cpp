@@ -19,9 +19,9 @@
 #include <time.h>
 #include <stdlib.h>
 
-#define ANTIALIAS 1
-#define REFLECTION 1
-#define GLOSSY_REFLECTION 1 // only available when REFLECTION = 1
+#define ANTIALIAS 0
+#define REFLECTION 0
+#define GLOSSY_REFLECTION 0 // only available when REFLECTION = 1
 #define REFRACTION 0
 #define SOFT_SHADOWS 0
 
@@ -227,7 +227,10 @@ void Raytracer::computeShading( Ray3D& ray ) {
 			Ray3D ray_shadow(ray.intersection.point, dir_shadow);
 			traverseScene(_root, ray_shadow);
 			if (!ray_shadow.intersection.none)
+			{
 				curLight->light->ambient(ray);
+				printf("mm\n");
+			}
 			else
 				curLight->light->shade(ray);
 		}
@@ -414,18 +417,18 @@ void Raytracer::render( int width, int height, Point3D eye, Vector3D view,
 				ray.dir = dirWorld;
 
 				Colour col = shadeRay(ray, 0, true); 
-	/*
+	
 				if (ray.intersection.none)
 					printf("_");
 				else
 					printf("o");
-	*/
+	
 				_rbuffer[i*width+j] = int(col[0]*255);
 				_gbuffer[i*width+j] = int(col[1]*255);
 				_bbuffer[i*width+j] = int(col[2]*255);
 			}
 		}
-//		printf("\n");
+		printf("\n");
 	}
 
 	flushPixelBuffer(fileName);
@@ -481,7 +484,7 @@ void Raytracer::loadScene(int width, int height, int scene)
 		SceneDagNode* sphere1 = addObject( new UnitSphere(), &gold );
 		SceneDagNode* sphere2 = addObject( new UnitSphere(), &glass );
 
-		SceneDagNode* cone = addObject( new UnitCone(), &glass );
+//		SceneDagNode* cone = addObject( new UnitCone(), &glass );
 
 		//double f[3] = {0.4, 0.4, 0.4};
 		//scale(cone, Point3D(0, 0, 0), f);
@@ -551,5 +554,17 @@ void Raytracer::loadScene(int width, int height, int scene)
 		translate(sphere, Vector3D(0, 2, 0));
 
 		render(width, height, eye, view, up, fov, "refraction.bmp");
+	}
+	if (scene == 2)
+	{
+		SceneDagNode* cone = addObject( new UnitCone(), &gold );
+		rotate(cone, 'y', 90);
+		addLightSource( new PointLight(Point3D(2, -1, 5), 1, Colour(0.9, 0.9, 0.9)));
+
+		Point3D eye(2, 1, 4);
+		Vector3D view(-2, 0, -4);
+		Vector3D up(0, 1, 0);
+		double fov = 60;
+		render(width, height, eye, view, up, fov, "cone.bmp");		
 	}
 }

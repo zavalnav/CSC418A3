@@ -10,6 +10,7 @@
 
 #include <cmath>
 #include <iostream>
+#include <stdio.h>
 #include "scene_object.h"
 
 const double eps = 1e-4;
@@ -42,8 +43,9 @@ bool UnitSquare::intersect( Ray3D& ray, const Matrix4x4& worldToModel,
 
 	Vector3D normal = Vector3D(0, 0, 1);
 	Vector3D P1 = Vector3D(0.5, 0.5, 0);
+	if (std::abs(dirInObject[2]) < eps) return false;
 	float dist = -originInObject[2] / dirInObject[2];
-	if (dist < eps) return false;
+	if (dist < eps) return false; // the ray shoots away or the origin is on the plane
 	Point3D intersect_point = originInObject + dist * dirInObject;
 /*
 	Point3D intersect_point = Point3D(
@@ -56,7 +58,7 @@ bool UnitSquare::intersect( Ray3D& ray, const Matrix4x4& worldToModel,
 	{
 		Point3D new_intersection = modelToWorld * intersect_point;
 		float new_t_value = (new_intersection[0] - ray.origin[0]) / ray.dir[0];
-		if (ray.intersection.none || new_t_value < ray.intersection.t_value)
+		if (ray.intersection.none || new_t_value + eps < ray.intersection.t_value)
 		{
 			ray.intersection.none = false;
 			ray.intersection.t_value = new_t_value;
@@ -125,7 +127,7 @@ bool UnitSphere::intersect( Ray3D& ray, const Matrix4x4& worldToModel,
 			return false;
 
 		float new_t_value = (new_intersection[0] - ray.origin[0]) / ray.dir[0];
-		if (ray.intersection.none || new_t_value < ray.intersection.t_value)
+		if (ray.intersection.none || new_t_value + eps < ray.intersection.t_value)
 		{
 			ray.intersection.none = false;
 			ray.intersection.point = new_intersection;
@@ -147,13 +149,14 @@ bool UnitSphere::intersect( Ray3D& ray, const Matrix4x4& worldToModel,
 bool UnitCone::intersect( Ray3D& ray, const Matrix4x4& worldToModel,
 		const Matrix4x4& modelToWorld ){
 
+	Point3D O(0, 0, 0);
         Point3D origin = worldToModel * ray.origin;
         Vector3D dir = worldToModel * ray.dir;
 
         float twoPI = (float)(M_PI * 2.0);
         float A=1;
         float B=1;
-        float C=-1;
+        float C=1;
         float A2, B2, C2;
         A2 = 2.0f * A;
         B2 = 2.0f * B;
@@ -164,44 +167,117 @@ bool UnitCone::intersect( Ray3D& ray, const Matrix4x4& worldToModel,
         float zmin = 0;
         float zmax = 1;
         float miny, maxy;
-        float t_value, tWS;
+        float tWS;
         float theta;
         float thetamax = 45;
         float t_valueWorld;
 
-
-        miny = -zmin - EPSILON; 
-        maxy = zmax + EPSILON;
+        miny = -zmin - eps; 
+        maxy = zmax + eps;
         theta = (float)(thetamax * M_PI / 180.0f - M_PI);
 
-
         dMagOS = 1.0f / dir.length();  
-        dir.normalize();
-        int flag = false;
+        bool flag = false;
 
+        a = A * dir[0] * dir[0] + B * dir[1] * dir[1] - C * dir[2] * dir[2];
+        b = A2 * origin[0] * dir[0] + B2 * origin[1] * dir[1] - C2 * origin[2] * dir[2];
+        c = A * origin[0] * origin[0] + B * origin[1] * origin[1] - C * origin[2] * origin[2];
 
-        a = A * dir[0] * dir[0] + B * dir[1] * dir[1] + C * dir[2] * dir[2];
-        b = A2 * origin[0] * dir[0] + B2 * origin[1] * dir[1] + C2 * origin[2] * dir[2];
-        c = A * origin[0] * origin[0] + B * origin[1] * origin[1] + C * origin[2] * origin[2];
+	// check if intersect with the bottum round
+	if (std::abs(dir[2]) > eps)
+	{
+		float t_value = (1 - origin[2]) / dir[2];
+		Point3D I = origin + t_value * dir;
 
-        if (a == 0.0f) { 
-            t_value = - c / b;
-            flag = true;    
-        } else {
-            discrim = b * b - 4.0 * a * c; 
+		// check if the ray shoots away or the origin is on the plane
+		// check if the ray is in range
+		if (t_value > eps && I[0] * I[0] + I[1] * I[1] < 1)
+		{
+			Point3D new_intersection = modelToWorld * I;
+			float new_t_value = (new_intersection[0] - ray.origin[0]) / ray.dir[0];
+			if (ray.intersection.none || new_t_value + eps < ray.intersection.t_value)
+			{
+				ray.intersection.none = false;
+				ray.intersection.point = new_intersection;
+				ray.intersection.t_value = new_t_value;
+				ray.intersection.normal = transNorm(worldToModel, Vector3D(0, 0, 1));
+				ray.intersection.normal.normalize();
+				flag = true;
+			}
+		}
+	}
 
-            if (discrim < 0) return false; // no intersection
+        if (std::abs(a) < eps)
+	{
+		float t_value = -c / b;
+		Point3D intersection_model = origin + t_value * dir;
+		if (t_value > eps && 0 <= intersection_model[2] && intersection_model[2] <= 1)
+		{
+			Point3D new_intersection = modelToWorld * intersection_model;
+			float new_t_value = (new_intersection[0] - ray.origin[0]) / ray.dir[0];
+			if (ray.intersection.none || new_t_value + eps < ray.intersection.t_value)
+			{
+				ray.intersection.none = false;
+				ray.intersection.point = new_intersection;
+				ray.intersection.t_value = new_t_value;
+				Vector3D normal_model = intersection_model - O;
+				normal_model[2] = -normal_model[2];
+				ray.intersection.normal = transNorm(worldToModel, normal_model);
+				ray.intersection.normal.normalize();
+				flag = true;
+			}
+		}
+	}
+	else
+	{
+		discrim = b * b - 4.0 * a * c;
 
-            discrim = (float)sqrt(discrim);    
-            a2_1 = 1 / (2 * a);               
-            t_value = (-b - discrim) * a2_1;            // near intersection
+		if (discrim < 0) return flag; // no intersection
 
-            if (t_value < 0) {                       // near intersection too close
-                t_value = (-b + discrim) * a2_1;        // use far intersection
-                flag = true;                        // remember this
-            }
+		discrim = (float)sqrt(discrim);
+
+		float t_value = (-b - discrim) / (2 * a);            // near intersection
+		Point3D intersection_model = origin + t_value * dir;
+
+		if (t_value > eps && 0 <= intersection_model[2] && intersection_model[2] <= 1)
+		{
+			Point3D new_intersection = modelToWorld * intersection_model;
+			float new_t_value = (new_intersection[0] - ray.origin[0]) / ray.dir[0];
+			if (ray.intersection.none || new_t_value + eps < ray.intersection.t_value)
+			{
+				ray.intersection.none = false;
+				ray.intersection.point = new_intersection;
+				ray.intersection.t_value = new_t_value;
+				Vector3D normal_model = intersection_model - O;
+				normal_model[2] = -normal_model[2];
+				ray.intersection.normal = transNorm(worldToModel, normal_model);
+				ray.intersection.normal.normalize();
+				flag = true;
+			}
+		}
+
+		t_value = (-b + discrim) / (2 * a);            // far intersection
+		intersection_model = origin + t_value * dir;
+		if (t_value > eps && 0 <= intersection_model[2] && intersection_model[2] <= 1)
+		{
+			Point3D new_intersection = modelToWorld * intersection_model;
+			float new_t_value = (new_intersection[0] - ray.origin[0]) / ray.dir[0];
+			if (ray.intersection.none || new_t_value + eps < ray.intersection.t_value)
+			{
+				ray.intersection.none = false;
+				ray.intersection.point = new_intersection;
+				ray.intersection.t_value = new_t_value;
+				Vector3D normal_model = intersection_model - O;
+				normal_model[2] = -normal_model[2];
+				ray.intersection.normal = transNorm(worldToModel, normal_model);
+				ray.intersection.normal.normalize();
+				flag = true;
+			}
+		}
         }
 
+	return flag;
+/*
         t_valueWorld = t_value * dMagOS; // need to scale intersection tOS to get tWS
         if ((t_valueWorld > ray.intersection.t_value) || (t_valueWorld < 0)) return false;   // trivial reject
 
@@ -253,7 +329,7 @@ bool UnitCone::intersect( Ray3D& ray, const Matrix4x4& worldToModel,
         C2 * ray.intersection.point[2]);
         ray.intersection.normal = transNorm(worldToModel, n);
 		ray.intersection.normal.normalize();
-        return true;
+        return true;*/
 }
 
 
