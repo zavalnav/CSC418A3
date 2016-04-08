@@ -19,11 +19,14 @@
 #include <time.h>
 #include <stdlib.h>
 
-#define ANTIALIAS 0
+#define NUMANTIALIASE 5
+#define ANTIALIAS 1
 #define REFLECTION 0
 #define GLOSSY_REFLECTION 0 // only available when REFLECTION = 1
 #define REFRACTION 0
 #define SOFT_SHADOWS 0
+#define FOCALLENGTH 5
+#define DOF 1
 
 Raytracer::Raytracer() : _lightSource(NULL) {
 	_root = new SceneDagNode();
@@ -373,64 +376,70 @@ void Raytracer::render( int width, int height, Point3D eye, Vector3D view,
 	freopen("scene.txt", "w", stdout);
 
 	// Construct a ray for each pixel.
-	for (int i = 0; i < _scrHeight; i++) {
-		for (int j = 0; j < _scrWidth; j++) {
-			// Sets up ray origin and direction in view space, 
-			// image plane is at z = -1.
-			Point3D origin(0, 0, 0);
-			Point3D imagePlane;
-			if (ANTIALIAS){
-				for (float parti = i; parti < i + 1.0f; parti += 0.5f){
-					for (float partj = j; partj < j + 1.0f; partj += 0.5f){
-						imagePlane[0] = (-double(width)/2 + 0.25 + partj)/factor;
-						imagePlane[1] = (-double(height)/2 + 0.25 + parti)/factor;
-						imagePlane[2] = -1;
+	for (int i = 0; i < _scrHeight; i++) 
+	{
+		for (int j = 0; j < _scrWidth; j++) 
+		{
+			// Sets up ray origin and direction in view space, image plane is at z = -1.
+			Point3D origin(0, 0, 0); // Create a point called origin 
+			Point3D imagePlane;	// the image plane where it is some distance away from the camera 
 
-						Vector3D dir = imagePlane - origin;
-						Vector3D dirWorld = viewToWorld * dir;
-							
-						Ray3D ray;
-						ray.origin = viewToWorld * origin;
-						ray.dir = dirWorld;
-						Colour col = shadeRay(ray, 0, true);
+			imagePlane[0] = (-double(width)/2 + 0.5 + j)/factor; // x position of image plane (factor influences the final width of the image plane) 
+			imagePlane[1] = (-double(height)/2 + 0.5 + i)/factor; // y position of image plane 
+			Colour col(0,0,0); 
+			srand(time(NULL));  
 
-						_rbuffer[i*width+j] += int(col[0]*255*0.25f);
-						_gbuffer[i*width+j] += int(col[1]*255*0.25f);
-						_bbuffer[i*width+j] += int(col[2]*255*0.25f);
+			for (float parti = i; parti < i + 1.0f; parti += 0.5f){
+				for (float partj = j; partj < j + 1.0f; partj += 0.5f){
+					imagePlane[0] = (-double(width)/2 + ((double)rand()/(double)RAND_MAX) + 0.25 + parti)/factor;
+					imagePlane[1] = (-double(height)/2 + ((double)rand()/(double)RAND_MAX) + 0.25 + partj)/factor;
+					imagePlane[2] = -1; 
+					// Construct the ray direction based on the points on the image plane computed 
+					Vector3D dir = Vector3D(imagePlane[0], imagePlane[1], imagePlane[2]);
+					// point Aimed is the position of the focal plane in specified direction 
+					Point3D pointAimed; 
+					Point3D new_origin = eye; 
+					
+					if(DOF == 1) 
+					{
+						dir = viewToWorld * dir;
+						dir.normalize();
+						pointAimed = eye + FOCALLENGTH*dir; 
+						double radius = 1; // radius of the lens 
+		    			double rand_x = rand()/double(RAND_MAX+1);
+		    			double rand_y = rand()/double(RAND_MAX+1);
+						Vector3D u = up; 
+						Vector3D v = up.cross(view); 
+						new_origin[0]= eye[0] -(radius/2)*u[0]-(radius/2)*v[0]+radius*(rand_x)*u[0]+radius*(rand_y)*v[0]; 
+						new_origin[1]= eye[1] -(radius/2)*u[1]-(radius/2)*v[1]+radius*(rand_x)*u[1]+radius*(rand_y)*v[1]; 
+						new_origin[2]= eye[2] -(radius/2)*u[2]-(radius/2)*v[2]+radius*(rand_x)*u[2]+radius*(rand_y)*v[2]; 
+						//getting the new direction of ray
+						dir = pointAimed - new_origin;
+						Ray3D ray = Ray3D(eye, dir);
+						dir.normalize();
+					}
+					else
+					{
+						dir = viewToWorld * dir;
+						dir.normalize();
+					}
+					Ray3D ray = Ray3D(new_origin, dir); 	
+					Colour colTwo = shadeRay(ray, 0, true); 
+					col[0] += colTwo[0]; 
+					col[1] += colTwo[1]; 
+					col[2] += colTwo[2]; 
 					}
 				}
-			}
-			else 
-			{
-				imagePlane[0] = (-double(width)/2 + 0.5 + j)/factor;
-				imagePlane[1] = (-double(height)/2 + 0.5 + i)/factor;
-				imagePlane[2] = -1;
-
-				// TODO: Convert ray to world space and call 
-				// shadeRay(ray) to generate pixel colour.
-
-				Vector3D dir = imagePlane - origin;
-				Vector3D dirWorld = viewToWorld * dir;
-				
-				Ray3D ray;
-				ray.origin = viewToWorld * origin;
-				ray.dir = dirWorld;
-
-				Colour col = shadeRay(ray, 0, true); 
-	
-				if (ray.intersection.none)
-					printf("_");
-				else
-					printf("o");
-	
-				_rbuffer[i*width+j] = int(col[0]*255);
-				_gbuffer[i*width+j] = int(col[1]*255);
-				_bbuffer[i*width+j] = int(col[2]*255);
-			}
+				col[0] /= (double) NUMANTIALIASE;  
+				col[1] /= (double) NUMANTIALIASE; 
+				col[2] /= (double) NUMANTIALIASE;  
+				// Finally, color the pixel based on the color that was given 
+				// Add less and less each sweep 
+				_rbuffer[i*width+j] += int(col[0]*255);
+				_gbuffer[i*width+j] += int(col[1]*255);
+				_bbuffer[i*width+j] += int(col[2]*255);
 		}
-		printf("\n");
 	}
-
 	flushPixelBuffer(fileName);
 }
 
