@@ -1,0 +1,31 @@
+Antialiasing:
+Antialiasing is implemented using supersampling. Each pixel is divided into 4 parts and the ray is cast through each corner. 
+Antialiasing is implemented in render function inside raytracer.cpp.
+
+
+Texture Mapping:
+In order to implement Texture Mapping, Intersection structure had to modified. bool texture_enabled and Texture texture fields were added. Scene object now contains texture field. Texture class was added to util.h/util.c. Texture class provides means for reading texture file (by using bmp_read provided in the starter code) as well as hight, width and RGB components. Mapping class was added to util.h/util.c file to store the texture map. In order to apply the texture, RGB components are changed to those of the texture map. 
+
+Depth of Field:
+Depth of field was meant to be implemented by defining a focal plane and placing a grid on top of the pixel, from which the rays would be shot through the focal point to the scene. The results collected from these rays are meant to be blended to get the final color of the pixel to be rendered. 
+
+
+Intersections (scene_object.cpp):
+UnitSquare:
+We find distance to the square by using similar triangles property and find intersection point by substituting it into ray formula
+
+UnitSphere:
+
+
+UnitCone:
+We find unit cone intersection by finding t_value by solving the quadratic equation and substituting it back into the equation of the line. 
+
+
+Glossy Reflection:
+
+Soft Shadow:
+
+Refraction:
+
+
+
